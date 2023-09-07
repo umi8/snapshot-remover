@@ -1,0 +1,75 @@
+name: Remove Snapshot
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  remove:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: read
+      checks: write
+      pull-requests: write
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK 1.11
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '11'
+
+      - name: build
+        run: mvn clean install
+
+      - name: Get current version
+        id: get_current_version
+        run: |
+          MAJOR_VERSION=$(mvn build-helper:parse-version help:evaluate -Dexpression=parsedVersion.majorVersion -q -DforceStdout)
+          MINOR_VERSION=$(mvn build-helper:parse-version help:evaluate -Dexpression=parsedVersion.minorVersion -q -DforceStdout)
+          PATCH_VERSION=$(mvn build-helper:parse-version help:evaluate -Dexpression=parsedVersion.incrementalVersion -q -DforceStdout)
+          echo "dot_version=$MAJOR_VERSION.$MINOR_VERSION.$PATCH_VERSION" >> $GITHUB_OUTPUT
+          echo "hyphen_version=$MAJOR_VERSION-$MINOR_VERSION-$PATCH_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create branch name
+        id: create_branch_name
+        env:
+          CURRENT_VERSION: ${{ steps.get_current_version.outputs.hyphen_version }}
+        run: |
+          echo "name=feature/v$CURRENT_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create title
+        id: create_title
+        env:
+          CURRENT_VERSION: ${{ steps.get_current_version.outputs.dot_version }}
+        run: |
+          echo "title=$CURRENT_VERSION-SNAPSHOT to $CURRENT_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Git Configuration
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      - name: Create branch
+        run: |
+          git switch -c ${{ steps.create_branch_name.outputs.name }}
+
+      - name: Remove snapshot
+        run: |
+          mvn versions:set -DremoveSnapshot versions:commit
+          git add .
+          git commit -m "${{ steps.create_title.outputs.title }}"
+          git push origin ${{ steps.create_branch_name.outputs.name }}
+
+      - name: Create Pull Request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            -B main \
+            -t "${{ steps.create_title.outputs.title }}" \
+            -b "This PR removes the snapshot from the version number."
