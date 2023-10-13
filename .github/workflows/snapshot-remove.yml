@@ -81,7 +81,7 @@ jobs:
               -t "${{ steps.create_title.outputs.title }}" \\
               -b "This PR removes the snapshot from the version number." \\
               --repo ${{ github.repository }} \\
-              && gh pr view ${{ steps.create_branch_name.outputs.name }} --web \\
+            && gh pr view ${{ steps.create_branch_name.outputs.name }} --web \\
               --repo ${{ github.repository }}`;
             await core.summary
               .addHeading('Command', 2)
