@@ -54,6 +54,12 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
 
+      - name: Check and delete existing branch
+        run: |
+          if git rev-parse --verify ${{ steps.create_branch_name.outputs.name }}; then
+            git push origin --delete ${{ steps.create_branch_name.outputs.name }}
+          fi
+
       - name: Create branch
         run: |
           git switch -c ${{ steps.create_branch_name.outputs.name }}
@@ -65,11 +71,14 @@ jobs:
           git commit -m "${{ steps.create_title.outputs.title }}"
           git push origin ${{ steps.create_branch_name.outputs.name }}
 
-      - name: Create Pull Request
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh pr create \
-            -B main \
-            -t "${{ steps.create_title.outputs.title }}" \
-            -b "This PR removes the snapshot from the version number."
+      - name: Show Create Pull Request command
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const production_command = `gh pr create \\
+              -B main \\
+              -H ${{ steps.create_branch_name.outputs.name }} \\
+              -t "${{ steps.create_title.outputs.title }}" \\
+              -b "This PR removes the snapshot from the version number." \\
+              --repo ${{ github.repository }} \\
+              && gh pr view --web`;
