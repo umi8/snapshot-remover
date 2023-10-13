@@ -56,7 +56,7 @@ jobs:
 
       - name: Check and delete existing branch
         run: |
-          if git fetch origin ${{ steps.create_branch_name.outputs.name }}; then
+          if git fetch origin ${{ steps.create_branch_name.outputs.name }} 2>/dev/null; then
             git push origin --delete ${{ steps.create_branch_name.outputs.name }}
           fi
 
