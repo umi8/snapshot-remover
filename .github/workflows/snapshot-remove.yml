@@ -75,10 +75,14 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
-            const production_command = `gh pr create \\
+            const command = `gh pr create \\
               -B main \\
               -H ${{ steps.create_branch_name.outputs.name }} \\
               -t "${{ steps.create_title.outputs.title }}" \\
               -b "This PR removes the snapshot from the version number." \\
               --repo ${{ github.repository }} \\
               && gh pr view --web`;
+            await core.summary
+              .addHeading('Command', 2)
+              .addCodeBlock(command)
+              .write()
